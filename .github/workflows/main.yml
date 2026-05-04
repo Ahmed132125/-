@@ -9,34 +9,25 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Update & install base deps
+      - name: Setup & Run DS2API (FULL FIX)
         run: |
           sudo apt update -y
           sudo apt install -y curl git
 
-      - name: Install Node.js 18
-        run: |
           curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
           sudo apt install -y nodejs
-          node -v
-          npm -v
 
-      - name: Install PM2
-        run: |
           sudo npm install -g pm2
 
-      - name: Setup & Run DS2API (FIXED)
-        run: |
           echo "📥 Cloning DS2API..."
           git clone https://github.com/CJackHwang/ds2api.git
           cd ds2api
 
-          echo "📂 Project structure:"
+          echo "📂 Structure:"
           ls -R
 
-          echo "📦 Installing dependencies..."
+          echo "📦 Installing..."
 
-          # Detect project location
           if [ -f package.json ]; then
             npm install
             pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
@@ -46,32 +37,18 @@ jobs:
             npm install
             pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
 
-          elif [ -d server ]; then
-            cd server
-            npm install
-            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
-
           else
-            echo "❌ No valid Node project found"
+            echo "❌ package.json not found"
             exit 1
           fi
 
           pm2 save
           pm2 list
 
-      - name: Install Tailscale
-        run: |
           curl -fsSL https://tailscale.com/install.sh | sh
           sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
 
-      - name: Show Tailscale IP
-        run: |
-          echo "🌐 VPS IP:"
+          echo "🌐 IP:"
           tailscale ip -4
 
-      - name: Keep Alive
-        run: |
-          while true; do
-            echo "🔥 DS2API running..."
-            sleep 300
-          done
+          while true; do sleep 300; done
