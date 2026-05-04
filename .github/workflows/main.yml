@@ -9,46 +9,52 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: Setup & Run DS2API (FULL FIX)
-        run: |
-          sudo apt update -y
-          sudo apt install -y curl git
+      - name: Update system
+        run: sudo apt update -y && sudo apt upgrade -y
 
-          curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+      - name: Install base dependencies
+        run: sudo apt install -y curl git
+
+      - name: Setup Node.js 20.x
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
           sudo apt install -y nodejs
 
-          sudo npm install -g pm2
+      - name: Install PM2 globally
+        run: sudo npm install -g pm2
 
-          echo "📥 Cloning DS2API..."
-          git clone https://github.com/CJackHwang/ds2api.git
-          cd ds2api
+      - name: Clone DS2API repository
+        run: git clone https://github.com/CJackHwang/ds2api.git
 
-          echo "📂 Structure:"
-          ls -R
-
-          echo "📦 Installing..."
-
+      # هنا المفتاح: نُحدد مجلد العمل ليتم تثبيت الحزم داخله
+      - name: Install dependencies & start app
+        working-directory: ./ds2api
+        run: |
+          echo "📂 Installing dependencies..."
+          # لو كان package.json موجوداً في الجذر
           if [ -f package.json ]; then
             npm install
             pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
-
+          # لو كان المشروع داخل مجلد backend
           elif [ -d backend ]; then
             cd backend
             npm install
             pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
-
           else
-            echo "❌ package.json not found"
+            echo "❌ لا يوجد package.json في المكان المتوقع"
             exit 1
           fi
-
           pm2 save
           pm2 list
 
-          curl -fsSL https://tailscale.com/install.sh | sh
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+      - name: Install Tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
 
-          echo "🌐 IP:"
-          tailscale ip -4
+      - name: Connect to Tailscale
+        run: sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
 
-          while true; do sleep 300; done
+      - name: Show Tailscale IP
+        run: tailscale ip -4
+
+      - name: Keep session alive
+        run: while true; do sleep 300; done
