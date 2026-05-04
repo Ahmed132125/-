@@ -1,0 +1,54 @@
+name: DS2API VPS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  vps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Update system
+        run: sudo apt update -y
+
+      - name: Install dependencies
+        run: |
+          sudo apt install -y curl git
+
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+          sudo apt install -y nodejs
+
+      - name: Install PM2
+        run: sudo npm install -g pm2
+
+      - name: Clone DS2API
+        run: |
+          git clone https://github.com/CJackHwang/ds2api.git
+          cd ds2api
+          npm install
+
+      - name: Run DS2API
+        run: |
+          cd ds2api
+          pm2 start index.js --name ds2api
+          pm2 save
+
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+
+      - name: Show IP
+        run: |
+          echo "🌐 Tailscale IP:"
+          tailscale ip -4
+
+      - name: Keep Alive
+        run: |
+          while true; do
+            echo "🔥 DS2API running..."
+            sleep 300
+          done
