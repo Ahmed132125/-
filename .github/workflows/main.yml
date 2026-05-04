@@ -8,17 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
-    defaults:
-      run:
-        shell: bash
-        working-directory: /home/runner/work/_temp_project
-
     steps:
-      - name: Prepare workspace
-        run: |
-          mkdir -p /home/runner/work/_temp_project
-          cd /home/runner/work/_temp_project
-
       - name: Update & install base deps
         run: |
           sudo apt update -y
@@ -35,42 +25,37 @@ jobs:
         run: |
           sudo npm install -g pm2
 
-      - name: Clone DS2API
+      - name: Setup & Run DS2API (FIXED)
         run: |
+          echo "📥 Cloning DS2API..."
           git clone https://github.com/CJackHwang/ds2api.git
+          cd ds2api
+
+          echo "📂 Project structure:"
           ls -R
 
-      - name: Install dependencies (auto-detect path)
-        run: |
-          cd ds2api
+          echo "📦 Installing dependencies..."
+
+          # Detect project location
           if [ -f package.json ]; then
             npm install
-            echo "ROOT project detected"
+            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
+
           elif [ -d backend ]; then
             cd backend
             npm install
-            echo "BACKEND detected"
+            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
+
           elif [ -d server ]; then
             cd server
             npm install
-            echo "SERVER detected"
+            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
+
           else
-            echo "❌ No Node project found"
+            echo "❌ No valid Node project found"
             exit 1
           fi
 
-      - name: Run DS2API
-        run: |
-          cd ds2api
-          if [ -f package.json ]; then
-            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
-          elif [ -d backend ]; then
-            cd backend
-            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
-          elif [ -d server ]; then
-            cd server
-            pm2 start index.js --name ds2api || pm2 start server.js --name ds2api
-          fi
           pm2 save
           pm2 list
 
@@ -81,7 +66,7 @@ jobs:
 
       - name: Show Tailscale IP
         run: |
-          echo "🌐 Your VPS IP:"
+          echo "🌐 VPS IP:"
           tailscale ip -4
 
       - name: Keep Alive
